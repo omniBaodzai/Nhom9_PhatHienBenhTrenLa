@@ -1,0 +1,14 @@
+# Chặn thư mục môi trường ảo 
+venv/
+.venv/
+env/
+
+# Chặn các file cache của Python
+__pycache__/
+*.pyc
+
+# Chặn file cấu hình của VS Code 
+.vscode/
+
+# Nếu file model .keras của bạn nặng trên 100MB, hãy bỏ dấu # ở dòng dưới để chặn nó không lên GitHub gây lỗi push
+# best_plant_disease_model.keras
