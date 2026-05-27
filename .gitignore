@@ -1,2 +1,11 @@
-venv/ 
-__pycache__/ 
+venv/
+__pycache__/
+*.keras
+*.h5
+*.pkl
+data/raw/
+data/processed/
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+.env

@@ -1,27 +1,45 @@
-import os
-import shutil
+import numpy as np
 from PIL import Image
 
 IMG_SIZE = (224, 224)
 
-def resize_images(input_dir, output_dir):
-    """Resize ảnh về 224x224 và lưu vào output_dir"""
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+def preprocess_image(img):
+    """
+    Xử lý 1 ảnh trước khi đưa vào model
+    Input: PIL Image hoặc đường dẫn file
+    Output: numpy array shape (1, 224, 224, 3)
+    """
+    if isinstance(img, str):
+        img = Image.open(img)
+    
+    img = img.convert('RGB')
+    img = img.resize(IMG_SIZE)
+    img_array = np.array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    
+    return img_array
 
-    classes = os.listdir(input_dir)
-    for cls in classes:
-        cls_input = os.path.join(input_dir, cls)
-        cls_output = os.path.join(output_dir, cls)
-        os.makedirs(cls_output, exist_ok=True)
+def preprocess_batch(img_paths):
+    """
+    Xử lý nhiều ảnh cùng lúc
+    Input: list đường dẫn ảnh
+    Output: numpy array shape (n, 224, 224, 3)
+    """
+    batch = []
+    for path in img_paths:
+        img = Image.open(path).convert('RGB')
+        img = img.resize(IMG_SIZE)
+        batch.append(np.array(img))
+    
+    return np.array(batch)
 
-        for img_name in os.listdir(cls_input):
-            img_path = os.path.join(cls_input, img_name)
-            try:
-                img = Image.open(img_path).convert('RGB')
-                img = img.resize(IMG_SIZE)
-                img.save(os.path.join(cls_output, img_name))
-            except Exception as e:
-                print(f"Lỗi ảnh {img_name}: {e}")
-
-    print(f"Resize xong! Lưu tại: {output_dir}")
+def validate_image(img_path):
+    """
+    Kiểm tra ảnh có hợp lệ không
+    """
+    try:
+        img = Image.open(img_path)
+        img.verify()
+        return True
+    except Exception:
+        return False
