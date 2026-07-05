@@ -76,10 +76,9 @@ Nhom9_PhatHienBenhTrenLa/
 
 ## 4. Tải Model AI
 
-
 ### Tải từ Google Drive 
+Link: **https://drive.google.com/file/d/1Oe5hKUbtvw03kLspstat8agO_JGaaeV7/view?usp=sharing**
 ```
-Link: https://drive.google.com/file/d/1Oe5hKUbtvw03kLspstat8agO_JGaaeV7/view?usp=sharing
 1. Tải file: bao_best_plant_disease_model.keras
 2. Đặt vào thư mục: models/
 3. Xác nhận file tồn tại: models/bao_best_plant_disease_model.keras
