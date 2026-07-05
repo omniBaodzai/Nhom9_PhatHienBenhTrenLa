@@ -70,8 +70,6 @@ Nhom9_PhatHienBenhTrenLa/
 │   │   └── preprocessing.py       # Xử lý ảnh
 │   └── compare/
 │       └── evaluate_models.py     # So sánh model
-└── data/
-    └── raw/                        # Dữ liệu gốc
 ```
 
 ---
