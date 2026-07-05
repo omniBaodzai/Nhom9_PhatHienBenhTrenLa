@@ -2,13 +2,53 @@
 venv/
 .venv/
 env/
+ENV/
+test/
 
 # Chặn các file cache của Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
 
-# Chặn file cấu hình của VS Code 
+# Chặn file cấu hình của VS Code / IDE
 .vscode/
+.idea/
+*.swp
+*.swo
 
-# Nếu file model .keras của bạn nặng trên 100MB, hãy bỏ dấu # ở dòng dưới để chặn nó không lên GitHub gây lỗi push
-# best_plant_disease_model.keras
+# Chặn tất cả các file bên trong thư mục models (tránh nặng Git)
+models/*
+
+# Data files (nếu quá lớn)
+data/
+
+# Streamlit (Chỉ chặn file bảo mật, giữ lại config giao diện nếu có)
+.streamlit/secrets.toml
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Các file Markdown tài liệu cá nhân không muốn push
+CACH_THUAT_VU_DUNG_TRONG_DU_AN.md
+PHAN_BIET_NHIEM_VU.md
+TRANSFER_LEARNING_BACKPROPAGATION.md
+TRIEN_KHAI_STREAMLIT.md

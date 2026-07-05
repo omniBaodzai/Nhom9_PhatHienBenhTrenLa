@@ -1,93 +1,301 @@
 import streamlit as st
-import tensorflow as tf
-from PIL import Image
-import numpy as np
-# Nạp từ điển thông tin bệnh từ file class_names.py
-from src.class_names import DISEASE_DETAILS 
+import os
+import warnings
+import textwrap
 
-st.set_page_config(page_title="Hệ thống nhận diện bệnh cây trồng - Nhóm 9", layout="centered")
+# Suppress deprecation warnings
+warnings.filterwarnings("ignore")
 
-st.title("🌱 Hệ Thống Phát Hiện Bệnh Trên Lá Cây")
-st.write("Dự án Công nghệ AI phân loại bệnh - Sử dụng kiến trúc EfficientNet-B0")
+st.set_page_config(
+    page_title="Leaf Disease Detection",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-@st.cache_resource
-def load_plant_model():
-    return tf.keras.models.load_model('best_plant_disease_model.keras')
+# ===================== CSS ======================
+st.markdown("""
+<style>
 
-with st.spinner("🔄 Đang nạp mô hình AI..."):
-    model = load_plant_model()
+/* Toàn bộ nền ứng dụng: Màu sáng tự nhiên, dịu mắt, thực tế */
+.stApp {
+    background: #fafafa;
+}
 
-uploaded_file = st.file_uploader("Vui lòng tải lên bức ảnh lá cây cần kiểm tra...", type=["jpg", "jpeg", "png"])
+/* Ẩn menu mặc định */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Ảnh lá cây bạn đã chọn", use_container_width=True)
-    
-    if st.button("🔍 Bắt đầu nhận diện bệnh"):
-        with st.spinner("🤖 Trí tuệ nhân tạo đang phân tích ảnh..."):
-            # Tiền xử lý ảnh đầu vào
-            img_resized = image.resize((224, 224))
-            img_array = tf.keras.utils.img_to_array(img_resized)
-            img_array = tf.expand_dims(img_array, 0)
-            
-            # Dự đoán
-            predictions = model.predict(img_array)
-            score = predictions[0] # Lấy mảng xác suất trực tiếp
-            
-            predicted_class_idx = np.argmax(score)
-            # Lấy tên key tiếng Anh (ví dụ: 'Apple___Apple_scab')
-            raw_class_name = list(DISEASE_DETAILS.keys())[predicted_class_idx] 
-            confidence = score[predicted_class_idx] * 100
-            
-            # --- KHU VỰC HIỂN THỊ KẾT QUẢ ĐÃ ĐƯỢC ĐỔI MỚI ---
-            st.divider()
-            
-            # Ngưỡng chặn độ tin cậy (Ví dụ chọn 40%). 
-            # Nếu trên 40% -> Ảnh chuẩn, tra từ điển hiển thị chi tiết.
-            if confidence >= 40.0:
-                info = DISEASE_DETAILS[raw_class_name]
+/* Container Tiêu Đề Hệ Thống: Phong cách tối giản, gần gũi */
+.header-container {
+    text-align: center;
+    padding: 30px 20px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    margin-bottom: 25px;
+    border: 1px solid #e0e0e0;
+}
+
+.main-title {
+    font-size: 35px;
+    font-weight: 700;
+    color: #1b5e20; /* Màu xanh lá cây trầm phong cách nông nghiệp */
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.sub-title {
+    color: #555555;
+    font-size: 18px;
+    font-weight: 400;
+}
+
+/* Biến đổi st.container(border=True) thành các Card gọn gàng */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: #ffffff !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+}
+
+/* Thanh Tiêu Đề Phân Khu nằm gọn gàng bên trong Card */
+.custom-section-header {
+    background: #CCFFFF;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #424242;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* KHUNG KẾT QUẢ TOÀN DIỆN */
+.result-card {
+    background: #ffffff;
+    border: 1px solid #e8edf2;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+/* Tiêu đề Phân tích ảnh mẫu thiết kế lại tối giản, chuyên nghiệp hơn */
+.result-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #334155;
+    background: #FFCC99;
+    padding: 8px 14px;
+    border-left: 4px solid #2e7d32;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 16px;
+}
+
+/* Hàng hiển thị Tên bệnh & Độ tin cậy song song */
+.result-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.result-disease-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #166534;
+}
+
+.result-confidence {
+    font-size: 18px;
+    font-weight: 700;
+    color: #15803d;
+    background: #dcfce7;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+/* Chi tiết nội dung phân tích */
+.info-section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 14px;
+    margin-bottom: 6px;
+}
+
+.info-section-content {
+    font-size: 18px;
+    color: #475569;
+    line-height: 1.5;
+    background: #f8fafc;
+    padding: 12px 14px;
+    border-radius: 6px;
+}
+
+/* Nút Bấm: Tone màu xanh cây cỏ thực tế */
+.stButton>button {
+    width: 100%;
+    height: 48px;
+    border-radius: 10px;
+    border: none;
+    background: #33FF66;
+    color: #111111;
+    font-size: 18px;
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+
+.stButton>button:hover {
+    background: #1b5e20;
+    color: white;
+}
+
+/* File uploader */
+[data-testid="stFileUploader"] {
+    border: 2px dashed #cccccc;
+    border-radius: 12px;
+    padding: 20px;
+    background: #fafafa;
+}
+[data-testid="stFileUploader"]:hover {
+    border-color: #2e7d32;
+}
+
+/* Tinh chỉnh các ô thông báo của Streamlit */
+.stSuccess, .stError, .stInfo {
+    border-radius: 10px !important;
+}
+
+/* Tối ưu khoảng cách đường gạch ngang phân đoạn */
+hr {
+    margin-top: 15px !important;
+    margin-bottom: 25px !important;
+    border-color: #e0e0e0 !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ===================== HEADER ====================
+
+st.markdown(
+    """
+    <div class="header-container">
+        <div class="main-title">HỆ THỐNG PHÁT HIỆN BỆNH TRÊN LÁ</div>
+        <div class="sub-title">Sử dụng trí tuệ nhân tạo để chẩn đoán bệnh trên lá cây một cách nhanh chóng và chính xác</div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+selected_model = "bao_best_plant_disease_model.keras"
+models_dir = "models"
+model_path = os.path.join(models_dir, selected_model)
+
+if not os.path.exists(model_path):
+    st.error(f"Không tìm thấy mô hình '{selected_model}'")
+else:
+    col1, col2 = st.columns([1, 1], gap="large")
+
+    # ================= LEFT: TẢI ẢNH =================
+    with col1:
+        with st.container(border=True):
+            st.markdown('<div class="custom-section-header">Tải lên ảnh lá cây</div>', unsafe_allow_html=True)
+
+            uploaded_files = st.file_uploader(
+                "Chọn ảnh",
+                type=["jpg", "jpeg", "png", "bmp", "webp"],
+                accept_multiple_files=True,
+                label_visibility="collapsed"
+            )
+
+            if uploaded_files:
+                st.success(f"Đã tiếp nhận {len(uploaded_files)} tệp tin hình ảnh.")
+                st.markdown("<br>", unsafe_allow_html=True)
                 
-                # Hiển thị Tên bệnh to rõ ràng bằng tiếng Việt
-                st.header(info["vi_name"])
-                
-                # Chia thành 3 cột nhỏ để hiển thị thông số tổng quan giống app mẫu
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.markdown(f"**Loại tác nhân:**\n\n`{info['type']}`")
-                with col2:
-                    st.markdown(f"**Mức độ nghiêm trọng:**\n\n`{info['severity']}`")
-                with col3:
-                    st.markdown(f"**Độ tin cậy AI:**\n\n`{confidence:.1f}%`")
-                
-                st.write("") # Tạo khoảng cách dòng
-                
-                # Hiển thị các mục Triệu chứng, Nguyên nhân, Điều trị bằng Bullet Point sinh động
-                st.subheader("📋 Triệu chứng")
-                for symptom in info["symptoms"]:
-                    st.write(f"- {symptom}")
-                    
-                st.subheader("🔍 Nguyên nhân có thể xảy ra")
-                for cause in info["causes"]:
-                    st.write(f"- {cause}")
-                    
-                st.subheader("💊 Sự đối đãi / Hướng điều trị")
-                for treatment in info["treatment"]:
-                    st.write(f"- {treatment}")
-                    
-            # Nếu dưới 40% -> Đây là ảnh lấy đại ngoài dataset (như ảnh lá dưa leo bạn test)
+                for i in range(0, len(uploaded_files[:10]), 2):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        idx = i + 1
+                        st.image(
+                            uploaded_files[i],
+                            use_container_width=True,
+                            caption=f"Ảnh {idx}"
+                        )
+                    if i + 1 < len(uploaded_files[:10]):
+                        with c2:
+                            idx = i + 2
+                            st.image(
+                                uploaded_files[i + 1],
+                                use_container_width=True,
+                                caption=f"Ảnh {idx}"
+                            )
+
+    # ================= RIGHT: KẾT QUẢ CHẨN ĐOÁN =================
+    with col2:
+        with st.container(border=True):
+            st.markdown('<div class="custom-section-header">Kết quả chẩn đoán</div>', unsafe_allow_html=True)
+
+            if uploaded_files:
+                if st.button(
+                    "Tiến hành phân tích và chẩn đoán",
+                    type="primary",
+                    use_container_width=True
+                ):
+                    with st.spinner("Đang xử lý dữ liệu ảnh..."):
+                        try:
+                            from src.app.predict import (
+                                load_trained_model,
+                                predict_plant_disease
+                            )
+
+                            model = load_trained_model(model_path)
+
+                            for idx, uploaded_file in enumerate(uploaded_files[:10], 1):
+                                result = predict_plant_disease(uploaded_file, model)
+
+                                if result["success"]:
+                                    # Xử lý chuỗi dữ liệu trước khi nạp vào HTML để tránh lỗi vỡ cú pháp Markdown
+                                    confidence_val = result.get('confidence', 0) * 100
+                                    confidence_str = f"{confidence_val:.2f}%"
+                                    disease_name = result.get('vi_name', 'Không rõ')
+                                    symptom_text = result.get('symptom', 'Chưa có dữ liệu chi tiết.')
+                                    treatment_text = result.get('treatment', 'Chưa có dữ liệu chi tiết.')
+
+                                    # Tạo cấu trúc HTML và triệt tiêu toàn bộ khoảng thụt lề dòng (indentation) lỗi
+                                    html_output = textwrap.dedent(f"""
+                                    <div class="result-card">
+                                        <div class="result-card-title">Kết quả phân tích ảnh {idx}</div>
+                                        <div class="result-meta-row">
+                                            <div class="result-disease-name">🌿 Tên bệnh: {disease_name}</div>
+                                            <div class="result-confidence">Độ tin cậy: {confidence_str}</div>
+                                        </div>
+                                        <div class="info-section-title">Triệu chứng lâm sàng:</div>
+                                        <div class="info-section-content">{symptom_text}</div>
+                                        <div class="info-section-title">Biện pháp xử lý khuyến nghị:</div>
+                                        <div class="info-section-content">{treatment_text}</div>
+                                    </div>
+                                    """).strip()
+                                    
+                                    st.markdown(html_output, unsafe_allow_html=True)
+                                else:
+                                    st.error(f"Hệ thống không thể đọc được cấu trúc ảnh {idx}.")
+
+                        except Exception as e:
+                            st.error(f"Hệ thống gặp sự cố: {str(e)}")
             else:
-                st.warning("⚠️ **Phát hiện dấu hiệu bất thường:** Độ tin cậy của mô hình quá thấp!")
-                st.write("Bức ảnh này có thể không thuộc 14 loại cây trồng nằm trong phạm vi nhận diện của hệ thống.")
-                
-                # Đưa ra một tư vấn chung dựa trên phỏng đoán gần nhất của AI
-                st.markdown("### 📋 Phỏng đoán tổng quát dựa trên hình thái đốm lá:")
-                st.error("🦠 Phát hiện tổn thương dạng Đốm lá tổng quát")
-                
-                col1, col2 = st.columns(2)
-                col1.metric(label="Độ tin cậy phỏng đoán", value=f"{confidence:.1f}%")
-                col2.metric(label="Nhóm triệu chứng tương đồng", value="Tomato/Apple Blight")
-                
-                st.subheader("💡 Khuyến nghị xử lý chung cho các bệnh đốm lá:")
-                st.write("- **Bước 1:** Cách ly cây bị bệnh, ngắt bỏ ngay các lá có đốm vàng/nâu để tránh bào tử nấm phát tán rộng.")
-                st.write("- **Bước 2:** Kiểm tra lại chế độ tưới nước, chỉ tưới ở gốc, không phun trực tiếp lên lá vào ban đêm.")
-                st.write("- **Bước 3:** Chụp lại ảnh lá cây rõ ràng hơn dưới điều kiện đủ ánh sáng và tải lại lên hệ thống.")
+                st.info("Vui lòng tải lên ảnh để bắt đầu phân tích")
